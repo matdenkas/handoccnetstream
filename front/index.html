@@ -3,6 +3,15 @@
 
 <head>
   <script src='https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js'></script>
+  <script src="https://cdn.jsdelivr.net/npm/handtrackjs@latest/dist/handtrack.min.js"></script>
+  <script type="importmap">
+	{
+	  "imports": {
+		"three": "https://cdn.jsdelivr.net/npm/three@v0.163.0/build/three.module.js",
+		"three/addons/": "https://cdn.jsdelivr.net/npm/three@v0.163.0/examples/jsm/"
+	  }
+	}
+  </script>
 	<meta charset="UTF-8">
 	<meta name="viewport"
 		content="width=device-width, initial-scale=1.0">
@@ -10,15 +19,27 @@
 
 	<style>
 		div {
-			width: 500px;
-			height: 400px;
+			width: 960px;
+			height: 540px;
 			border: 2px solid black;
 			position: relative;
 		}
 
 		video {
-			width: 500px;
-			height: 400px;
+			width: 960px;
+			height: 540px;
+			object-fit: cover;
+		}
+
+		img {
+			width: 960px;
+			height: 540px;
+			object-fit: cover;
+		}
+
+		canvas {
+			width: 960px;
+			height: 540px;
 			object-fit: cover;
 		}
 	</style>
@@ -32,9 +53,15 @@
 	<button id="but" autoplay>
 		Open WebCam
 	</button>
-  <button id="next" autoplay>
+  	<button id="next" autoplay>
 		Next
 	</button>
+	<div>
+		<img id="img_bbox" src=''></img>
+	</div>
+	<div>
+		<canvas id="myCanvas"></canvas>
+	</div>
 </body>
-  <script src="./src/index.js"></script>
+  <script type="module" src="./src/index.js"></script>
 </html>
