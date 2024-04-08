@@ -15,6 +15,7 @@ from utils.vis import save_obj
 from utils.mano import MANO
 mano = MANO()
 
+IS_CUDA = False
 
 ## INIT
 # model snapshot load
@@ -23,8 +24,12 @@ assert osp.exists(model_path), 'Cannot find model at ' + model_path
 print('Load checkpoint from {}'.format(model_path))
 model = get_model('test')
 
-model = DataParallel(model).cuda()
-ckpt = torch.load(model_path)
+if IS_CUDA:
+    model = DataParallel(model).cuda()
+else:
+    model = DataParallel(model).cpu()
+
+ckpt = torch.load(model_path, map_location = torch.device('cpu'))
 model.load_state_dict(ckpt['network'], strict=False)
 model.eval()
 
@@ -49,7 +54,11 @@ def exec_HOC(args):
     # bbox = process_bbox(bbox, original_img_width, original_img_height)
     img, img2bb_trans, bb2img_trans = generate_patch_image(original_img, bbox, 1.0, 0.0, False, cfg.input_img_shape) 
     img = transform(img.astype(np.float32))/255
-    img = img.cuda()[None,:,:,:]
+
+    if IS_CUDA:
+        img = img.cuda()[None,:,:,:]
+    else:
+        img = img.cpu()[None,:,:,:]
 
     # forward pass to the model
     inputs = {'img': img} # cfg.input_img_shape[1], cfg.input_img_shape[0], 3

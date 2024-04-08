@@ -43,16 +43,6 @@
 </head>
 
 <body>
-	<div class="container" id = "imgContainer">
-        <div class="item">
-            <video id="vid"></video>
-        </div>
-        <div class="item">
-            <canvas id="img_bbox"></canvas>
-			<img id="img_drop" src="" alt=""></img>
-        </div>
-    </div>
-
 	<button id="but" autoplay>
         Open WebCam
     </button>
@@ -63,21 +53,21 @@
         Add Object
     </button>
 
+	<div class="container" id = "imgContainer">
+        <div class="item">
+            <video id="vid"></video>
+        </div>
+        <div class="item">
+            <canvas id="img_bbox"></canvas>
+			<img id="img_drop" src="" alt=""></img>
+        </div>
+    </div>
+
     <div class="container" id="resultsContainer">
 
 	</div>
 
 	<br />
-
-    <button id="but" autoplay>
-        Open WebCam
-    </button>
-    <button id="next" autoplay>
-        Next
-    </button>
-    <button id="but2" autoplay>
-        Add Object
-    </button>
 
 </body>
 <script type="module" src="./src/index.js"></script>
