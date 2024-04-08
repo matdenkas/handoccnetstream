@@ -52,12 +52,10 @@ $( document ).ready(function() {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height );
     
         let image_url = canvas.toDataURL('image/jpeg');
-        let image = new Image()
-        image.width = 960;
-        image.height = 540;
-        image.src = image_url;
+        let img = document.getElementById("img_drop");
+        img.src = image_url;
 
-        p_detect(image, image_url);
+        p_detect(img, image_url);
     });
 
 });
@@ -168,7 +166,7 @@ function add_hand_to_scene(hand_obj){
 async function p_detect(image, url) {
 
     // Detecting hand from image
-    let predictions =  await BBOX_MODEL.detect(image)
+    let predictions =  await BBOX_MODEL.detect(image);
     let most_conf_pred = process_pred_results(predictions);
   
     if (!most_conf_pred) {console.log('BOOOO'); return; }
