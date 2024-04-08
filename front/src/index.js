@@ -11,6 +11,10 @@ let LOADER = null;
 
 
 $( document ).ready(function() {
+    let but2 = document.getElementById("but2");
+    but2.addEventListener("click", () => { get_processed_result();});
+
+
     let but = document.getElementById("but");
     let video = document.getElementById("vid");
     let mediaDevices = navigator.mediaDevices;
@@ -48,10 +52,12 @@ $( document ).ready(function() {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height );
     
         let image_url = canvas.toDataURL('image/jpeg');
-        let img = document.getElementById("img_bbox");
+        let image = new Image()
+        image.width = 960;
+        image.height = 540;
+        image.src = image_url;
 
-        img.src = image_url;
-        p_detect(img, image_url);
+        p_detect(image, image_url);
     });
 
 });
@@ -65,9 +71,9 @@ function init_scene() {
     RENDERER = new THREE.WebGLRenderer();
 
     RENDERER.setSize( window.innerWidth, window.innerHeight );
-    document.body.appendChild( RENDERER.domElement );
+    document.getElementById('resultsContainer').appendChild(RENDERER.domElement);
 
-    CAMERA.position.z = 5; //Move cam back
+    CAMERA.position.z = 0.3; // Adjust camera zoom
 
     // Create Lights
     var directionalLight = new THREE.DirectionalLight(0xffffff, 0.5); // color, intensity
@@ -103,6 +109,44 @@ function load_hand_from_ref(hand_ref){
     );
 }
 
+var isDragging = false;
+var previousMousePosition = {
+    x: 0,
+    y: 0
+};
+
+function add_rotation_event_listeners(){
+
+    document.addEventListener('mousedown', function(event) {
+        isDragging = true;
+        previousMousePosition = {
+            x: event.clientX,
+            y: event.clientY
+        };
+    });
+
+    document.addEventListener('mousemove', function(event) {
+        if (isDragging) {
+            var deltaMove = {
+                x: event.clientX - previousMousePosition.x,
+                y: event.clientY - previousMousePosition.y
+            };
+
+            loadedHand.rotation.y += deltaMove.x * 0.01;
+            loadedHand.rotation.x += deltaMove.y * 0.01;
+
+            previousMousePosition = {
+                x: event.clientX,
+                y: event.clientY
+            };
+        }
+    });
+
+    document.addEventListener('mouseup', function(event) {
+        isDragging = false;
+    });
+}
+
 function add_hand_to_scene(hand_obj){
 
     if (loadedHand) { // Remove old hand
@@ -111,11 +155,10 @@ function add_hand_to_scene(hand_obj){
     SCENE.add( hand_obj ); // add new hand
     loadedHand = hand_obj; // remember hand loaded
 
+    add_rotation_event_listeners();
+
     function animate() {
         requestAnimationFrame( animate );
-    
-        hand_obj.rotation.x += 0.01;
-        hand_obj.rotation.y += 0.01;
     
         RENDERER.render( SCENE, CAMERA );
     }
@@ -127,10 +170,11 @@ async function p_detect(image, url) {
     // Detecting hand from image
     let predictions =  await BBOX_MODEL.detect(image)
     let most_conf_pred = process_pred_results(predictions);
-    if (!most_conf_pred) { return; }
+  
+    if (!most_conf_pred) {console.log('BOOOO'); return; }
 
     // Rendering bbox image
-    let canvas = document.getElementById('myCanvas');
+    let canvas = document.getElementById('img_bbox');
     BBOX_MODEL.renderPredictions([most_conf_pred], canvas, canvas.getContext('2d'), image); 
 
     send_image_for_process(most_conf_pred, url, image);
@@ -192,7 +236,7 @@ function send_image_for_process(prediction, image_ref, image) {
         data : send_pkg,
         success : function(o){ 
             console.log("Server responded: Success!");
-            get_proccessed_result() 
+            get_processed_result() 
         },
         error : function(e){ console.warn(`Server responded: ${e}`);}
     })
@@ -200,7 +244,7 @@ function send_image_for_process(prediction, image_ref, image) {
 
 }
 
-function get_proccessed_result() {
+function get_processed_result() {
     console.log("Requesting processed result from server...");
     $.ajax({
         method: 'GET',

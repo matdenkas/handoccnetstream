@@ -96,10 +96,6 @@ app.post('/process', upload, function(req, res){
   //   console.log('pattern: ', data.toString());
   // });
 
-
-
-
-
 });
 
 app.get('/next', function(req, res){
@@ -109,7 +105,7 @@ app.get('/next', function(req, res){
 });
 
 app.get('/nextObj', function(req, res){
-  console.log('Next request received...')
+  console.log('Next object request received...')
   const sendFIlePath = path.join(__dirname, '../../../HandOccNet/demo/image_3dmesh.obj')
   res.sendFile(sendFIlePath, (err) => ({if (err) {console.log(err)}}))
 });
