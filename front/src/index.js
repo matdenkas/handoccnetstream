@@ -8,11 +8,20 @@ let SCENE = null;
 let CAMERA = null;
 let RENDERER = null;
 let LOADER = null;
+let FRAME_LOCK = false;
+let USER_LOCK = false;
+let WEBCAM_LOCK = true;
 
+
+$(document).on("keypress", function (e) {
+    if(e.which == 32) {
+        USER_LOCK = !USER_LOCK;
+    }
+});
 
 $( document ).ready(function() {
     let but2 = document.getElementById("but2");
-    but2.addEventListener("click", () => { get_processed_result();});
+    but2.addEventListener("click", () => { get_processed_result(); });
 
 
     let but = document.getElementById("but");
@@ -37,6 +46,7 @@ $( document ).ready(function() {
                 video.addEventListener("loadedmetadata", () => {
                     video.play();
                 });
+                WEBCAM_LOCK = false;
             })
             .catch(alert);
     });
@@ -58,8 +68,24 @@ $( document ).ready(function() {
         p_detect(img, image_url);
     });
 
+    setInterval(() => {
+        if(BBOX_MODEL && !FRAME_LOCK && !USER_LOCK && !WEBCAM_LOCK) {
+            let canvas = document.createElement('canvas');
+    
+            canvas.width = 1920;
+            canvas.height = 1080;
+        
+            let ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height );
+        
+            let image_url = canvas.toDataURL('image/jpeg');
+            let img = document.getElementById("img_drop");
+            img.src = image_url;
+    
+            p_detect(img, image_url);
+        }
+    }, 500)
 });
-
 
 
 function init_scene() {
@@ -161,6 +187,8 @@ function add_hand_to_scene(hand_obj){
         RENDERER.render( SCENE, CAMERA );
     }
     animate();
+
+    FRAME_LOCK = false;
 }
 
 async function p_detect(image, url) {
@@ -169,7 +197,8 @@ async function p_detect(image, url) {
     let predictions =  await BBOX_MODEL.detect(image);
     let most_conf_pred = process_pred_results(predictions);
   
-    if (!most_conf_pred) {console.log('BOOOO'); return; }
+    if (!most_conf_pred) { return; }
+    FRAME_LOCK = true;
 
     // Rendering bbox image
     let canvas = document.getElementById('img_bbox');
