@@ -2,28 +2,12 @@
 import * as THREE from 'three';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
-let model = null;
+let BBOX_MODEL = null;
 let loadedHand = null;
-
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
-const loader = new OBJLoader();
-
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize( window.innerWidth, window.innerHeight );
-document.body.appendChild( renderer.domElement );
-
-// Create directional light
-var directionalLight = new THREE.DirectionalLight(0xffffff, 0.5); // color, intensity
-directionalLight.position.set(0, 1, 0); // position the light
-scene.add(directionalLight);
-
-// Optionally, you can add ambient light to provide overall illumination
-var ambientLight = new THREE.AmbientLight(0x404040); // soft white light
-scene.add(ambientLight);
-
-camera.position.z = 5;
-
+let SCENE = null;
+let CAMERA = null;
+let RENDERER = null;
+let LOADER = null;
 
 
 $( document ).ready(function() {
@@ -32,8 +16,8 @@ $( document ).ready(function() {
     let mediaDevices = navigator.mediaDevices;
     vid.muted = true;
 
-    get_model()
-
+    init_scene()
+    init_bbox_detection_model()
 
     but.addEventListener("click", () => {
 
@@ -74,8 +58,27 @@ $( document ).ready(function() {
 
 
 
-async function get_model() {
-    model =  await handTrack.load({
+function init_scene() {
+    SCENE = new THREE.Scene();
+    CAMERA = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+    LOADER = new OBJLoader();
+    RENDERER = new THREE.WebGLRenderer();
+
+    RENDERER.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( RENDERER.domElement );
+
+    CAMERA.position.z = 5; //Move cam back
+
+    // Create Lights
+    var directionalLight = new THREE.DirectionalLight(0xffffff, 0.5); // color, intensity
+    directionalLight.position.set(0, 1, 0); // position the light
+    var ambientLight = new THREE.AmbientLight(0x404040); // soft white light
+    SCENE.add(directionalLight);
+    SCENE.add(ambientLight);
+}
+
+async function init_bbox_detection_model() {
+    BBOX_MODEL =  await handTrack.load({
         flipHorizontal: false,
         outputStride: 16,
         imageScaleFactor: 1,
@@ -87,13 +90,54 @@ async function get_model() {
         bboxLineWidth: "2",
         fontSize: 17,
     })
-    console.log('model set')
+    console.log('Hand bbox model loaded!')
+}
+
+
+function load_hand_from_ref(hand_ref){
+    LOADER.load(
+        hand_ref, // resource URL
+        function ( object ) { add_hand_to_scene(object); }, // called when resource is loaded
+        function ( xhr ) {  console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' ); }, // called when loading is in progresses
+        function ( error ) { console.log( 'An error happened' , error); } // called when loading has errors
+    );
+}
+
+function add_hand_to_scene(hand_obj){
+
+    if (loadedHand) { // Remove old hand
+        SCENE.remove(loadedHand)
+    }
+    SCENE.add( hand_obj ); // add new hand
+    loadedHand = hand_obj; // remember hand loaded
+
+    function animate() {
+        requestAnimationFrame( animate );
+    
+        hand_obj.rotation.x += 0.01;
+        hand_obj.rotation.y += 0.01;
+    
+        RENDERER.render( SCENE, CAMERA );
+    }
+    animate();
 }
 
 async function p_detect(image, url) {
-    let predictions =  await model.detect(image)
+
+    // Detecting hand from image
+    let predictions =  await BBOX_MODEL.detect(image)
+    let most_conf_pred = process_pred_results(predictions);
+    if (!most_conf_pred) { return; }
+
+    // Rendering bbox image
     let canvas = document.getElementById('myCanvas');
-    
+    BBOX_MODEL.renderPredictions([most_conf_pred], canvas, canvas.getContext('2d'), image); 
+
+    send_image_for_process(most_conf_pred, url, image);
+}
+
+
+function process_pred_results(predictions) {
     let predictions_noFace = []
     predictions.forEach(function(item, index, object){
         if(item.label != "face") {
@@ -101,7 +145,7 @@ async function p_detect(image, url) {
         }
     });
 
-    if(predictions_noFace.length == 0) { return }
+    if(predictions_noFace.length == 0) { return null; }
 
     let max_conf_seen = 0
     let most_conf_pred = null
@@ -118,112 +162,57 @@ async function p_detect(image, url) {
         most_conf_pred = predictions_noFace[0];
     }
 
-    most_conf_pred.bbox[0] = most_conf_pred.bbox[0] - (most_conf_pred.bbox[0] * 0.2)
-    most_conf_pred.bbox[1] = most_conf_pred.bbox[1] - (most_conf_pred.bbox[1] * 0.2)
-    most_conf_pred.bbox[2] = most_conf_pred.bbox[2] + (most_conf_pred.bbox[2] * 0.2)
-    most_conf_pred.bbox[3] = most_conf_pred.bbox[3] + (most_conf_pred.bbox[3] * 0.2)
+    most_conf_pred = expand_bbox(most_conf_pred);
+    return most_conf_pred
+}
 
-    model.renderPredictions([most_conf_pred], canvas, canvas.getContext('2d'), image); 
+function expand_bbox(prediction) {
+    prediction.bbox[0] = prediction.bbox[0] - (prediction.bbox[0] * 0.2);
+    prediction.bbox[1] = prediction.bbox[1] - (prediction.bbox[1] * 0.2);
+    prediction.bbox[2] = prediction.bbox[2] + (prediction.bbox[2] * 0.2);
+    prediction.bbox[3] = prediction.bbox[3] + (prediction.bbox[3] * 0.2);
+    return prediction;
+}
 
-    var formdata = new FormData()
-    formdata.append('photo', url);
-    formdata.append('xmin', (most_conf_pred.bbox[0] / image.width) * 1920);
-    formdata.append('ymin', (most_conf_pred.bbox[1] / image.height) * 1080);
-    formdata.append('width', (most_conf_pred.bbox[2] / image.width) * 1920);
-    formdata.append('height', (most_conf_pred.bbox[3] / image.height) * 1080);
+
+function send_image_for_process(prediction, image_ref, image) {
+    console.log("Sending image pkg to server for process...");
+
+    var send_pkg = new FormData()
+    send_pkg.append('photo', image_ref);
+    send_pkg.append('xmin', (prediction.bbox[0] / image.width) * 1920);
+    send_pkg.append('ymin', (prediction.bbox[1] / image.height) * 1080);
+    send_pkg.append('width', (prediction.bbox[2] / image.width) * 1920);
+    send_pkg.append('height', (prediction.bbox[3] / image.height) * 1080);
     $.ajax({
         method : 'POST',
         processData : false,
         contentType : false,
         url : '/process',
-        data : formdata,
-        success : function(o){
-
-            $.ajax({
-                method: 'GET',
-                url: '/next', // Assuming this is the correct endpoint
-                xhrFields: {
-                    responseType: 'blob' // Set the response type to blob
-                },
-                success: function(data) {
-                    // On success, create an object URL from the blob
-                    var imageUrl = URL.createObjectURL(data);
-
-                    img = document.getElementById("img_bbox");
-                    // Create an image element
-                    img.src = imageUrl;
-            
-                },
-                error: function(xhr, status, error) {
-                    console.error('Error fetching image:', error);
-                }
-            });
-
-            $.ajax({
-                method: 'GET',
-                url: '/nextObj', // Assuming this is the correct endpoint
-                xhrFields: {
-                    responseType: 'blob' // Set the response type to blob
-                },
-                success: function(data) {
-                    // On success, create an object URL from the blob
-                    console.log(data);
-
-
-                    let obj = URL.createObjectURL(data);
-                    console.log(obj)
-
-                    loader.load(
-                        // resource URL
-                        obj,
-                        // called when resource is loaded
-                        function ( object ) {
-                            
-                            if (loadedHand) { // Remove old hand
-                                scene.remove(loadedHand)
-                            }
-                            scene.add( object ); // add new hand
-                            animate();
-                            loadedHand = object;
-
-
-                            function animate() {
-                                requestAnimationFrame( animate );
-                            
-                                object.rotation.x += 0.01;
-                                object.rotation.y += 0.01;
-                            
-                                renderer.render( scene, camera );
-                            }
-                    
-                        },
-                        // called when loading is in progresses
-                        function ( xhr ) {
-                    
-                            console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
-                    
-                        },
-                        // called when loading has errors
-                        function ( error ) {
-                    
-                            console.log( 'An error happened' , error);
-                    
-                        }
-                    );
-            
-                },
-                error: function(xhr, status, error) {
-                    console.error('Error fetching image:', error);
-                }
-            });
+        data : send_pkg,
+        success : function(o){ 
+            console.log("Server responded: Success!");
+            get_proccessed_result() 
         },
-        error : function(e){
-            //callback here on error
-            console.log(`error: ${e}`)
-        }
+        error : function(e){ console.warn(`Server responded: ${e}`);}
     })
+
 
 }
 
-
-   
+function get_proccessed_result() {
+    console.log("Requesting processed result from server...");
+    $.ajax({
+        method: 'GET',
+        url: '/nextObj',
+        xhrFields: {
+            responseType: 'blob' // Set the response type to blob
+        },
+        success: function(data) {
+            console.log("Server responded: Success!");
+            let hand_ref = URL.createObjectURL(data);
+            load_hand_from_ref(hand_ref);
+        },
+        error: function(xhr, status, error) { console.warn('Server responded: ', error); }
+    });
+}
