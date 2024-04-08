@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
 let model = null;
+let loadedHand = null;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
@@ -12,23 +13,18 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
 
-const geometry = new THREE.BoxGeometry( 1, 1, 1 );
-const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-const cube = new THREE.Mesh( geometry, material );
-scene.add( cube );
+// Create directional light
+var directionalLight = new THREE.DirectionalLight(0xffffff, 0.5); // color, intensity
+directionalLight.position.set(0, 1, 0); // position the light
+scene.add(directionalLight);
+
+// Optionally, you can add ambient light to provide overall illumination
+var ambientLight = new THREE.AmbientLight(0x404040); // soft white light
+scene.add(ambientLight);
 
 camera.position.z = 5;
 
-function animate() {
-	requestAnimationFrame( animate );
 
-	cube.rotation.x += 0.01;
-	cube.rotation.y += 0.01;
-
-	renderer.render( scene, camera );
-}
-
-animate();
 
 $( document ).ready(function() {
     let but = document.getElementById("but");
@@ -183,10 +179,22 @@ async function p_detect(image, url) {
                         // called when resource is loaded
                         function ( object ) {
                             
-
-                            scene.add( object );
-                            console.log(object)
+                            if (loadedHand) { // Remove old hand
+                                scene.remove(loadedHand)
+                            }
+                            scene.add( object ); // add new hand
                             animate();
+                            loadedHand = object;
+
+
+                            function animate() {
+                                requestAnimationFrame( animate );
+                            
+                                object.rotation.x += 0.01;
+                                object.rotation.y += 0.01;
+                            
+                                renderer.render( scene, camera );
+                            }
                     
                         },
                         // called when loading is in progresses
@@ -211,7 +219,7 @@ async function p_detect(image, url) {
         },
         error : function(e){
             //callback here on error
-            console.log('error')
+            console.log(`error: ${e}`)
         }
     })
 
