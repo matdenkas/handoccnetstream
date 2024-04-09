@@ -20,14 +20,13 @@
 	<style>
 		.container {
 			display: flex;
-			flex-wrap: wrap;
-			justify-content: center;
+			justify-content: space-around; /* Adjust alignment as needed */
+			width: 100%; /* Ensure items take up full width */
 		}
 
 		.item {
-			width: 540px;
-			height: 540px;
-			margin-bottom: 20px;
+			width: 33%; /* Equal width for all items */
+			height: 540px; /* Adjust height as needed */
 			border: 2px solid black;
 			position: relative;
 		}
@@ -39,37 +38,58 @@
 			height: 100%;
 			object-fit: cover;
 		}
+
+		.flagContainer {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: flex-start;
+			margin-bottom: 5px;
+		}
+
+		.flag {
+			width: 10%;
+			height: 100%;
+			border: 2px solid black;
+			position: relative;
+			background-color: red;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+		}
+
+		body {
+			background-color: darkgray;
+		}
 	</style>
 </head>
 
 <body>
-	<button id="but" autoplay>
-        Open WebCam
-    </button>
-    <button id="next" autoplay>
-        Next
-    </button>
-    <button id="but2" autoplay>
-        Add Object
-    </button>
+    <div class="flagContainer">
+        <div class="flag" id="userLockFlag" title="Press SPACE to toggle.">User Lock</div>
+        <div class="flag" id="frameLockFlag">Frame Lock</div>
+    </div>
 
-	<div class="container" id = "imgContainer">
+    <button id="but" autoplay>Open WebCam</button>
+
+    <div class="container" id="allItemsContainer">
         <div class="item">
             <video id="vid"></video>
         </div>
         <div class="item">
             <canvas id="img_bbox"></canvas>
-			<img id="img_drop" src="" alt=""></img>
+        </div>
+        <div class="item">
+            <img id="img_drop" src="" alt="">
         </div>
     </div>
 
-    <div class="container" id="resultsContainer">
-
+	<div class="container" id="objectContainer">
 	</div>
 
-	<br />
-
+    <br />
 </body>
+
 <script type="module" src="./src/index.js"></script>
 
 </html>

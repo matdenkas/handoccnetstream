@@ -13,17 +13,22 @@ let USER_LOCK = false;
 let WEBCAM_LOCK = true;
 
 
+function updateButtonColor(flag, divID) {
+    if (flag) {
+        $(divID).css('background-color', 'green');
+    } else {
+        $(divID).css('background-color', 'red');
+    }
+}
+
 $(document).on("keypress", function (e) {
     if(e.which == 32) {
         USER_LOCK = !USER_LOCK;
+        updateButtonColor(USER_LOCK, '#userLockFlag');
     }
 });
 
 $( document ).ready(function() {
-    let but2 = document.getElementById("but2");
-    but2.addEventListener("click", () => { get_processed_result(); });
-
-
     let but = document.getElementById("but");
     let video = document.getElementById("vid");
     let mediaDevices = navigator.mediaDevices;
@@ -51,25 +56,9 @@ $( document ).ready(function() {
             .catch(alert);
     });
 
-    let next = document.getElementById("next");
-    next.addEventListener("click", () => {
-        let canvas = document.createElement('canvas');
-    
-        canvas.width = 1920;
-        canvas.height = 1080;
-    
-        let ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height );
-    
-        let image_url = canvas.toDataURL('image/jpeg');
-        let img = document.getElementById("img_drop");
-        img.src = image_url;
-
-        p_detect(img, image_url);
-    });
-
     setInterval(() => {
         if(BBOX_MODEL && !FRAME_LOCK && !USER_LOCK && !WEBCAM_LOCK) {
+
             let canvas = document.createElement('canvas');
     
             canvas.width = 1920;
@@ -95,7 +84,7 @@ function init_scene() {
     RENDERER = new THREE.WebGLRenderer();
 
     RENDERER.setSize( window.innerWidth, window.innerHeight );
-    document.getElementById('resultsContainer').appendChild(RENDERER.domElement);
+    document.getElementById('objectContainer').appendChild(RENDERER.domElement);
 
     CAMERA.position.z = 0.3; // Adjust camera zoom
 
@@ -189,6 +178,7 @@ function add_hand_to_scene(hand_obj){
     animate();
 
     FRAME_LOCK = false;
+    updateButtonColor(FRAME_LOCK, '#frameLockFlag');
 }
 
 async function p_detect(image, url) {
@@ -199,6 +189,7 @@ async function p_detect(image, url) {
   
     if (!most_conf_pred) { return; }
     FRAME_LOCK = true;
+    updateButtonColor(FRAME_LOCK, '#frameLockFlag');
 
     // Rendering bbox image
     let canvas = document.getElementById('img_bbox');
